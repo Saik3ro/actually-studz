@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { AppHeader } from "@/components/AppHeader";
 
 function NotFoundComponent() {
   return (
@@ -72,14 +73,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Actually.Studz 🤓 — Master any topic" },
+      { name: "description", content: "Upload your materials or search a topic. Generate notes, quizzes, and flashcards instantly." },
+      { name: "author", content: "Actually.Studz" },
+      { property: "og:title", content: "Actually.Studz 🤓" },
+      { property: "og:description", content: "Upload your materials or search a topic. We'll help you master it." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -113,7 +113,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <AppHeader />
+        <main className="flex-1 flex flex-col">
+          <Outlet />
+        </main>
+      </div>
     </QueryClientProvider>
   );
 }
