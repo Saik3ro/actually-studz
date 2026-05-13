@@ -4,12 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { AppHeader } from "@/components/AppHeader";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function NotFoundComponent() {
   return (
@@ -110,13 +112,21 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAuthRoute = pathname === "/auth" || pathname.startsWith("/auth/");
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <AppHeader />
         <main className="flex-1 flex flex-col">
-          <Outlet />
+          {isAuthRoute ? (
+            <Outlet />
+          ) : (
+            <ProtectedRoute>
+              <Outlet />
+            </ProtectedRoute>
+          )}
         </main>
       </div>
     </QueryClientProvider>

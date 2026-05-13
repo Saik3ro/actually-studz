@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -40,15 +40,6 @@ function SettingsPage() {
           checked={notif}
           onChange={setNotif}
         />
-        <div className="p-5">
-          <p className="font-medium text-foreground">Default quiz length</p>
-          <p className="text-sm text-muted-foreground">How many questions per generated quiz.</p>
-          <select className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-            <option>5 questions</option>
-            <option>10 questions</option>
-            <option>20 questions</option>
-          </select>
-        </div>
       </div>
     </section>
   );
@@ -71,22 +62,7 @@ function Toggle({
         <p className="font-medium text-foreground">{label}</p>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <button
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          "relative h-6 w-11 rounded-full transition-colors",
-          checked ? "bg-primary" : "bg-border"
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform",
-            checked ? "translate-x-5" : "translate-x-0.5"
-          )}
-        />
-      </button>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

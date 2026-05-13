@@ -1,16 +1,28 @@
 import { QueryClient } from "@tanstack/react-query";
-import { createRouter } from "@tanstack/react-router";
+import { createRouter, Outlet } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { AuthProvider } from "./contexts/AuthContext";
+import type { ReactNode } from "react";
 
-export const getRouter = () => {
+function AppWrap({ children }: { children: ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
+}
+
+export function getRouter() {
   const queryClient = new QueryClient();
-
-  const router = createRouter({
+  return createRouter({
     routeTree,
     context: { queryClient },
+    defaultPreload: "intent",
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultComponent: Outlet,
+    Wrap: AppWrap,
   });
+}
 
-  return router;
-};
+declare module "@tanstack/react-start" {
+  interface Register {
+    ssr: true;
+    router: ReturnType<typeof getRouter>;
+  }
+}
