@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentIdRouteImport } from './routes/content.$id'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/settings': typeof SettingsRoute
   '/content/$id': typeof ContentIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/settings': typeof SettingsRoute
   '/content/$id': typeof ContentIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,28 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/settings': typeof SettingsRoute
   '/content/$id': typeof ContentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
+  fullPaths:
+    | '/'
+    | '/flashcards'
+    | '/profile'
+    | '/saved'
+    | '/settings'
+    | '/content/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
-  id: '__root__' | '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
+  to: '/' | '/flashcards' | '/profile' | '/saved' | '/settings' | '/content/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/flashcards'
+    | '/profile'
+    | '/saved'
+    | '/settings'
+    | '/content/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,11 +98,19 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   ProfileRoute: typeof ProfileRoute
   SavedRoute: typeof SavedRoute
+  SettingsRoute: typeof SettingsRoute
   ContentIdRoute: typeof ContentIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/saved': {
       id: '/saved'
       path: '/saved'
@@ -124,6 +154,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   ProfileRoute: ProfileRoute,
   SavedRoute: SavedRoute,
+  SettingsRoute: SettingsRoute,
   ContentIdRoute: ContentIdRoute,
 }
 export const routeTree = rootRouteImport
