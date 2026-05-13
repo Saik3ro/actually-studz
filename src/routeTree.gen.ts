@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SavedRouteImport } from './routes/saved'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentIdRouteImport } from './routes/content.$id'
@@ -17,6 +18,11 @@ import { Route as ContentIdRouteImport } from './routes/content.$id'
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FlashcardsRoute = FlashcardsRouteImport.update({
@@ -38,12 +44,14 @@ const ContentIdRoute = ContentIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/content/$id': typeof ContentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/content/$id': typeof ContentIdRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/content/$id': typeof ContentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/flashcards' | '/saved' | '/content/$id'
+  fullPaths: '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/flashcards' | '/saved' | '/content/$id'
-  id: '__root__' | '/' | '/flashcards' | '/saved' | '/content/$id'
+  to: '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
+  id: '__root__' | '/' | '/flashcards' | '/profile' | '/saved' | '/content/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FlashcardsRoute: typeof FlashcardsRoute
+  ProfileRoute: typeof ProfileRoute
   SavedRoute: typeof SavedRoute
   ContentIdRoute: typeof ContentIdRoute
 }
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/saved'
       fullPath: '/saved'
       preLoaderRoute: typeof SavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/flashcards': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FlashcardsRoute: FlashcardsRoute,
+  ProfileRoute: ProfileRoute,
   SavedRoute: SavedRoute,
   ContentIdRoute: ContentIdRoute,
 }
