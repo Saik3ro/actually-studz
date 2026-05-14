@@ -16,6 +16,8 @@ import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
+import { Route as QuizConfigSessionIdRouteImport } from './routes/quiz-config.$sessionId'
+import { Route as QuizConfigIdRouteImport } from './routes/quiz-config.$id'
 import { Route as ContentIdRouteImport } from './routes/content.$id'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
@@ -54,6 +56,16 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/auth/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizConfigSessionIdRoute = QuizConfigSessionIdRouteImport.update({
+  id: '/quiz-config/$sessionId',
+  path: '/quiz-config/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizConfigIdRoute = QuizConfigIdRouteImport.update({
+  id: '/quiz-config/$id',
+  path: '/quiz-config/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContentIdRoute = ContentIdRouteImport.update({
   id: '/content/$id',
   path: '/content/$id',
@@ -74,6 +86,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
+  '/quiz-config/$id': typeof QuizConfigIdRoute
+  '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +99,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
+  '/quiz-config/$id': typeof QuizConfigIdRoute
+  '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
   '/auth': typeof AuthIndexRoute
 }
 export interface FileRoutesById {
@@ -97,6 +113,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
+  '/quiz-config/$id': typeof QuizConfigIdRoute
+  '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +128,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
+    | '/quiz-config/$id'
+    | '/quiz-config/$sessionId'
     | '/auth/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +141,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
+    | '/quiz-config/$id'
+    | '/quiz-config/$sessionId'
     | '/auth'
   id:
     | '__root__'
@@ -132,6 +154,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
+    | '/quiz-config/$id'
+    | '/quiz-config/$sessionId'
     | '/auth/'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +168,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ContentIdRoute: typeof ContentIdRoute
+  QuizConfigIdRoute: typeof QuizConfigIdRoute
+  QuizConfigSessionIdRoute: typeof QuizConfigSessionIdRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
@@ -198,6 +224,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quiz-config/$sessionId': {
+      id: '/quiz-config/$sessionId'
+      path: '/quiz-config/$sessionId'
+      fullPath: '/quiz-config/$sessionId'
+      preLoaderRoute: typeof QuizConfigSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz-config/$id': {
+      id: '/quiz-config/$id'
+      path: '/quiz-config/$id'
+      fullPath: '/quiz-config/$id'
+      preLoaderRoute: typeof QuizConfigIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/content/$id': {
       id: '/content/$id'
       path: '/content/$id'
@@ -224,6 +264,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ContentIdRoute: ContentIdRoute,
+  QuizConfigIdRoute: QuizConfigIdRoute,
+  QuizConfigSessionIdRoute: QuizConfigSessionIdRoute,
   AuthIndexRoute: AuthIndexRoute,
 }
 export const routeTree = rootRouteImport

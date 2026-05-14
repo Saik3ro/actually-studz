@@ -98,6 +98,10 @@
   --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
+* {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
 .dark {
   /* Dark mode: USTP Blue background, white text, yellow accents */
   --background: oklch(0.376 0.197 264.5);

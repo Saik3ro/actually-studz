@@ -235,7 +235,7 @@ function Index() {
                 "Generate"
               )}
             </button>
-            <p className="text-sm text-muted-foreground">Selected: {selectedTypes.join(" + ")}</p>
+            <p className="text-sm text-muted-foreground">Selected: {selectedTypes.map(type => type.charAt(0).toUpperCase() + type.slice(1)).join(" + ")}</p>
           </div>
         ) : null}
       </div>

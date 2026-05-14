@@ -1,6 +1,7 @@
 ﻿import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Loader2, BookOpen, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Loader2, BookOpen, HelpCircle, ChevronDown, ChevronUp, Copy, Save, FileText } from 'lucide-react'
+import { toast } from 'sonner'
 import supabase from '../lib/supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -78,25 +79,172 @@ function ContentPage() {
     fetchContent()
   }, [id])
 
+  const handleCopyNotes = async () => {
+    if (!notes?.content_json) return
+
+    try {
+      let notesText = `${notes.content_json.title}\n\n`
+
+      notes.content_json.sections.forEach((section: any, sectionIndex: number) => {
+        notesText += `${sectionIndex + 1}. ${section.heading}\n`
+
+        if (section.terms && section.terms.length > 0) {
+          section.terms.forEach((term: any, termIndex: number) => {
+            const letter = String.fromCharCode(97 + termIndex) // a, b, c, etc.
+            notesText += `  ${letter}. ${term.word}: ${term.definition}\n`
+          })
+        }
+
+        if (section.explanation) {
+          notesText += `  ${section.explanation}\n`
+        }
+
+        notesText += '\n'
+      })
+
+      await navigator.clipboard.writeText(notesText.trim())
+      toast.success('Copied!', { duration: 2000 })
+    } catch (err) {
+      toast.error('Failed to copy notes')
+    }
+  }
+
+  const handleSaveToTopics = async () => {
+    if (!session) return
+
+    try {
+      // Update the session to mark it as saved (if not already)
+      const { error: updateError } = await supabase
+        .from('study_sessions')
+        .update({ saved_at: new Date().toISOString() })
+        .eq('id', session.id)
+
+      if (updateError) throw updateError
+
+      toast.success('Saved!', { duration: 2000 })
+      // Navigate to saved topics page
+      navigate({ to: '/saved' })
+    } catch (err) {
+      toast.error('Failed to save to topics')
+    }
+  }
+
+  const handleGenerateQuizFromNotes = () => {
+    if (!session) return
+    navigate({ to: '/quiz-config/$sessionId', params: { sessionId: id } })
+  }
+
   const renderNotesTab = () => {
     if (!notes?.content_json?.sections) return <p>No notes available</p>
 
     return (
-      <div className="space-y-6">
-        {notes.content_json.sections.map((section: any, i: number) => (
-          <div key={i} className="mb-8">
-            <h2 className="text-xl font-bold mb-4 text-[#0038A8]">{section.heading}</h2>
-            
-            {section.terms?.map((term: any, j: number) => (
-              <div key={j} className="mb-4 pl-4 border-l-2 border-blue-200">
-                <p className="font-semibold text-lg">{term.word}</p>
-                <p className="text-muted-foreground mt-1">{term.definition}</p>
+      <div className="max-w-4xl mx-auto">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3 mb-6 justify-center">
+          <button
+            onClick={handleCopyNotes}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Copy className="h-4 w-4" />
+            📝 Copy Notes
+          </button>
+
+          <button
+            onClick={handleSaveToTopics}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Save className="h-4 w-4" />
+            💾 Save to Topics
+          </button>
+
+          <button
+            onClick={handleGenerateQuizFromNotes}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <HelpCircle className="h-4 w-4" />
+            ❓ Generate Quiz from Notes
+          </button>
+
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            ⬅ Back to Home
+          </button>
+        </div>
+
+        {/* Notes Content Box */}
+        <div className="bg-white shadow-lg rounded-lg p-8 max-w-none">
+          <style jsx>{`
+            .notes-content {
+              font-family: 'Consolas', 'Courier New', monospace;
+              text-align: justify;
+              line-height: 1.6;
+            }
+            .notes-content .title {
+              font-size: 2rem;
+              font-weight: bold;
+              text-align: center;
+              margin-bottom: 2rem;
+            }
+            .notes-content .section {
+              margin-bottom: 2rem;
+            }
+            .notes-content .section-heading {
+              font-size: 1.5rem;
+              font-weight: bold;
+              margin-bottom: 1rem;
+            }
+            .notes-content .subsection {
+              margin-left: 2rem;
+              margin-bottom: 1rem;
+            }
+            .notes-content .term {
+              font-weight: bold;
+            }
+            .notes-content .definition {
+              margin-left: 0.5rem;
+            }
+            .notes-content .explanation {
+              margin-top: 0.5rem;
+              text-align: justify;
+            }
+          `}</style>
+
+          <div className="notes-content">
+            <div className="title">{notes.content_json.title}</div>
+
+            {notes.content_json.sections.map((section: any, sectionIndex: number) => (
+              <div key={sectionIndex} className="section">
+                <div className="section-heading">
+                  {sectionIndex + 1}. {section.heading}
+                </div>
+
+                {section.terms && section.terms.length > 0 && (
+                  <div>
+                    {section.terms.map((term: any, termIndex: number) => {
+                      const letter = String.fromCharCode(97 + termIndex) // a, b, c, etc.
+                      return (
+                        <div key={termIndex} className="subsection">
+                          <span className="term">{letter}. {term.word}:</span>
+                          <span className="definition">{term.definition}</span>
+                          {term.explanation && (
+                            <div className="explanation">{term.explanation}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {section.explanation && (
+                  <div className="explanation">{section.explanation}</div>
+                )}
               </div>
             ))}
-            
-            <p className="mt-4 text-foreground leading-relaxed">{section.explanation}</p>
           </div>
-        ))}
+        </div>
       </div>
     )
   }
@@ -248,74 +396,23 @@ function ContentPage() {
   const hasNotes = session.generated_types?.includes('notes')
   const hasQuiz = session.generated_types?.includes('quiz')
 
+  // Always show notes-focused interface
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        {hasNotes ? (
+          renderNotesTab()
+        ) : (
+          <div className="text-center">
+            <p className="text-lg text-gray-600 mb-4">No notes available for this session.</p>
             <button
               onClick={() => navigate({ to: '/' })}
-              className="flex items-center text-[#0038A8] hover:text-blue-700"
+              className="bg-[#0038A8] text-white px-4 py-2 rounded hover:bg-blue-700"
             >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Home
+              Generate New Content
             </button>
-            <h1 className="text-xl font-bold text-gray-900">{session.topic}</h1>
-            <div></div> {/* Spacer */}
           </div>
-        </div>
-      </div>
-
-      {/* Tab Bar */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex space-x-8">
-            {hasNotes && (
-              <button
-                onClick={() => setActiveTab('notes')}
-                className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                  activeTab === 'notes'
-                    ? 'border-[#0038A8] text-[#0038A8]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                📝 Notes
-              </button>
-            )}
-            {hasQuiz && (
-              <>
-                <button
-                  onClick={() => setActiveTab('answered')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                    activeTab === 'answered'
-                      ? 'border-[#0038A8] text-[#0038A8]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  ✅ Quiz (Answered)
-                </button>
-                <button
-                  onClick={() => setActiveTab('blank')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                    activeTab === 'blank'
-                      ? 'border-[#0038A8] text-[#0038A8]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  📝 Quiz (Blank)
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {activeTab === 'notes' && renderNotesTab()}
-        {activeTab === 'answered' && renderQuizAnsweredTab()}
-        {activeTab === 'blank' && renderQuizBlankTab()}
+        )}
       </div>
     </div>
   )
