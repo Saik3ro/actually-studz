@@ -34,7 +34,7 @@ function ContentPage() {
     true_false: 2,
   })
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0)
-  const [isCardFlipped, setIsCardFlipped] = useState(false)
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -101,7 +101,7 @@ function ContentPage() {
 
   useEffect(() => {
     setCurrentFlashcardIndex(0)
-    setIsCardFlipped(false)
+    setSelectedAnswer(null)
   }, [quizzes])
 
   const handleRegenerateQuiz = async () => {
@@ -174,6 +174,35 @@ function ContentPage() {
     const isFirst = currentFlashcardIndex === 0;
     const isLast = currentFlashcardIndex === flashcards.length - 1;
 
+    // Parse the question and choices from the front text
+    let questionText = card.front || '';
+    let choices = card.choices || [];
+    
+    // Try to extract A), B), C), D) from the front text if choices are empty
+    if (card.type === 'multiple_choice' && (!choices || choices.length === 0)) {
+      // Find the first occurrence of A), B), C), or D)
+      const choiceMatch = card.front.match(/([A-D]\))/);
+      
+      if (choiceMatch) {
+        const firstChoiceIndex = card.front.indexOf(choiceMatch[0]);
+        questionText = card.front.substring(0, firstChoiceIndex).trim();
+        
+        // Extract all choices using regex
+        const choicesText = card.front.substring(firstChoiceIndex);
+        const choiceRegex = /([A-D]\)\s*[^A-D)]*?)(?=[A-D]\)|$)/g;
+        let match;
+        const extractedChoices: string[] = [];
+        
+        while ((match = choiceRegex.exec(choicesText)) !== null) {
+          extractedChoices.push(match[1].trim());
+        }
+        
+        if (extractedChoices.length > 0) {
+          choices = extractedChoices;
+        }
+      }
+    }
+
     return (
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-200 max-w-3xl mx-auto">
@@ -182,26 +211,43 @@ function ContentPage() {
               <p className="text-sm text-slate-500">Card {currentFlashcardIndex + 1} of {flashcards.length}</p>
               <p className="text-xs text-slate-500 mt-1">Type: {card.type?.replace('_', ' ') || 'flashcard'}</p>
             </div>
-            <button
-              onClick={() => setIsCardFlipped((current) => !current)}
-              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-            >
-              {isCardFlipped ? 'Show Front' : 'Show Back'}
-            </button>
           </div>
 
-          <div className="min-h-[220px] rounded-3xl border border-slate-200 bg-slate-50 p-8 flex flex-col justify-center text-center transition-all duration-300">
-            <p className="text-sm text-slate-500 mb-4">{isCardFlipped ? 'Back' : 'Front'}</p>
-            <p className="text-lg sm:text-xl font-semibold text-slate-900 leading-relaxed">
-              {isCardFlipped ? card.back : card.front}
+          <div className="min-h-[220px] rounded-3xl border border-slate-200 bg-slate-50 p-8 flex flex-col justify-start text-left transition-all duration-300">
+            <p className="text-sm text-slate-500 mb-6">Question</p>
+            <p className="text-lg sm:text-xl font-semibold text-slate-900 mb-8 leading-relaxed">
+              {questionText}
             </p>
+            
+            {card.type === 'multiple_choice' && choices && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-600 mb-4">Choose an answer</p>
+                {Array.isArray(choices) ? (
+                  choices.map((choice: string, idx: number) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedAnswer(choice)}
+                      className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+                        selectedAnswer === choice
+                          ? 'border-[#0038A8] bg-blue-50 text-slate-900 font-medium'
+                          : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-900'
+                      } text-sm`}
+                    >
+                      {choice}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500">No choices available</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex items-center justify-between gap-3">
             <button
               onClick={() => {
                 setCurrentFlashcardIndex((index) => Math.max(0, index - 1));
-                setIsCardFlipped(false);
+                setSelectedAnswer(null);
               }}
               disabled={isFirst}
               className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
@@ -211,7 +257,7 @@ function ContentPage() {
             <button
               onClick={() => {
                 setCurrentFlashcardIndex((index) => Math.min(flashcards.length - 1, index + 1));
-                setIsCardFlipped(false);
+                setSelectedAnswer(null);
               }}
               disabled={isLast}
               className="inline-flex items-center justify-center rounded-full bg-[#0038A8] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
