@@ -108,6 +108,55 @@ function Index() {
     }
   };
 
+  const handleQuizClick = async () => {
+    if (!user) {
+      setErrorMessage("You must be signed in to create a quiz.");
+      return;
+    }
+
+    if (!topic.trim() && !fileContent) {
+      setErrorMessage("Please enter a topic or upload a file first.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const sessionPayload = {
+        user_id: user.id,
+        input_type: fileName ? "file" as const : "topic" as const,
+        topic: topic.trim() || null,
+        file_url: null,
+        generated_types: ["quiz"] as const,
+      };
+
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("study_sessions")
+        .insert(sessionPayload)
+        .select("id")
+        .single();
+
+      if (sessionError || !sessionData?.id) {
+        throw new Error(sessionError?.message || "Failed to create study session.");
+      }
+
+      // Store file content in localStorage for the quiz config page to use
+      if (fileContent) {
+        try {
+          localStorage.setItem(`quiz_file_content_${sessionData.id}`, fileContent);
+        } catch {
+          // Ignore localStorage failures
+        }
+      }
+
+      navigate({ to: "/quiz-config/$sessionId", params: { sessionId: String(sessionData.id) } });
+    } catch (error) {
+      setErrorMessage((error as Error).message || "Failed to navigate to quiz configuration.");
+      setLoading(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!user) {
       setErrorMessage("You must be signed in to generate content.");
@@ -301,7 +350,7 @@ function Index() {
             title="Quiz"
             description="Customizable practice tests with instant answers."
             selected={selectedTypes.includes("quiz")}
-            onToggle={() => toggleType("quiz")}
+            onToggle={handleQuizClick}
             disabled={loading}
           />
           <ToggleCard

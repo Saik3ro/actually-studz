@@ -21,6 +21,7 @@ function QuizConfigPage() {
   const { id } = useParams({ from: '/quiz-config/$id' })
   const navigate = useNavigate()
   const { user } = useAuth()
+  const sessionId = parseInt(id, 10)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +75,7 @@ function QuizConfigPage() {
         const { data: sessionData, error: sessionError } = await supabase
           .from('study_sessions')
           .select('*')
-          .eq('id', id)
+          .eq('id', sessionId)
           .single()
 
         if (sessionError) throw sessionError
@@ -84,12 +85,11 @@ function QuizConfigPage() {
         const { data: notesData, error: notesError } = await supabase
           .from('notes')
           .select('*')
-          .eq('session_id', id)
+          .eq('session_id', sessionId)
           .single()
 
         if (notesError) {
           if (notesError.message?.includes('No rows')) {
-            setError('No notes available for this session')
             setNotes(null)
           } else {
             throw notesError
@@ -113,8 +113,8 @@ function QuizConfigPage() {
       return
     }
 
-    if (!session || !notes) {
-      setError('No notes available for this session')
+    if (!session) {
+      setError('Study session not found')
       return
     }
 
@@ -137,18 +137,18 @@ function QuizConfigPage() {
         )
       }
 
-      // Generate quiz using notes content as context
+      // Generate quiz using notes content if available, otherwise use session topic alone
       const quizResult = await generateQuiz(
         session.topic || 'Study Material',
         quizConfig,
-        JSON.stringify(notes.content_json)
+        notes?.content_json ? JSON.stringify(notes.content_json) : undefined
       )
 
       // Save to database
       const { error: insertError } = await supabase
         .from('quizzes')
         .insert({
-          session_id: id,
+          session_id: sessionId,
           answered_version_json: quizResult.answered_version,
           blank_version_json: quizResult.blank_version,
           config_json: quizConfig,
@@ -162,12 +162,12 @@ function QuizConfigPage() {
         .update({
           generated_types: ['quiz']
         })
-        .eq('id', id)
+        .eq('id', sessionId)
 
       if (updateError) throw updateError
 
-      // Navigate to quiz display
-      navigate({ to: '/content/$id', params: { id } })
+      // Navigate to quiz overview
+      navigate({ to: '/quiz-overview/$id', params: { id } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate quiz')
     } finally {
@@ -191,19 +191,16 @@ function QuizConfigPage() {
     math_problems: 'Solve mathematical problems and equations',
   }
 
-  if (!loading && !notes) {
+  if (!loading && !session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-lg">
-          <p className="text-lg font-semibold text-gray-900 mb-4">No notes available for this session</p>
-          <p className="text-sm text-gray-600 mb-6">
-            Please return to the content page and make sure notes were generated for this study session.
-          </p>
+          <p className="text-lg font-semibold text-gray-900 mb-4">Study session not found</p>
           <button
-            onClick={() => navigate({ to: '/content/$id', params: { id } })}
+            onClick={() => navigate({ to: '/' })}
             className="px-6 py-3 bg-[#0038A8] text-white rounded-xl hover:bg-blue-700 transition-colors"
           >
-            Back to Notes
+            Back to Home
           </button>
         </div>
       </div>

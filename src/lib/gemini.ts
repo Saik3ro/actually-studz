@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string;
 const groq = new Groq({ apiKey: API_KEY, dangerouslyAllowBrowser: true });
@@ -64,8 +64,8 @@ async function createCompletion(prompt: string) {
       { role: "system", content: "You are an assistant that returns ONLY valid JSON. No markdown, no code blocks, no additional text. Start with { and end with }." },
       { role: "user", content: prompt }
     ],
-    max_tokens: 4096,
-    temperature: 0.7,
+    max_completion_tokens: 4096,
+    temperature: 0.3,
   });
 
   const rawText = completion.choices?.[0]?.message?.content;
@@ -80,6 +80,10 @@ async function createCompletion(prompt: string) {
 
 export async function generateNotes(topic: string, context?: string) {
   if (!topic || !topic.trim()) throw new Error("Topic is required");
+
+  if (context && context.length > 1500) {
+    context = context.substring(0, 1500) + '... (content truncated)';
+  }
 
   const prompt = `You are an expert educator creating detailed study notes.
 
@@ -126,12 +130,69 @@ export async function generateQuiz(
 ) {
   if (!topic || !topic.trim()) throw new Error("Topic is required");
 
+  if (context && context.length > 1500) {
+    context = context.substring(0, 1500) + '... (content truncated)';
+  }
+
   const formatsList = Object.entries(config.formats)
     .filter(([, count]) => count > 0)
     .map(([format, count]) => `${count} ${format.replace(/_/g, " ")}`)
     .join(", ");
 
-  const prompt = `Create a quiz for: ${topic}${context ? "\n\nContext:\n" + context : ""}. Include formats: ${formatsList}. You must respond with ONLY valid JSON. No markdown, no code blocks, no additional text. Start with { and end with }. Return a JSON object with answered_version and blank_version, each containing sections arrays of {format, items: [{question, answer?, options?}]}.`;
+  const prompt = `You are an expert exam creator. Generate a quiz with these exact formats and counts: ${formatsList}
+
+CRITICAL JSON FORMAT RULES:
+1. Every question MUST have an "answer" field with the correct answer as a string
+2. Multiple choice questions MUST have an "options" array with exactly 4 strings in BOTH answered_version AND blank_version
+3. True/False questions MUST have "options": ["True", "False"] in BOTH versions
+4. Identification questions MUST have an "answer" string
+5. Essay questions MUST have an "answer" field with a model answer
+6. NEVER use null, undefined, or empty strings for answers
+
+TOPIC: ${topic}
+MAX ITEMS: 30 total across all formats
+${context ? 'CONTEXT: ' + context.substring(0, 1500) : ''}
+
+Return ONLY valid JSON matching this structure:
+{
+  "answered_version": {
+    "sections": [
+      {
+        "format": "multiple_choice",
+        "items": [
+          {
+            "question": "What is X?",
+            "answer": "Correct answer here",
+            "options": ["Option A", "Option B", "Correct answer here", "Option D"]
+          }
+        ]
+      },
+      {
+        "format": "true_false",
+        "items": [
+          {
+            "question": "Statement here",
+            "answer": "True",
+            "options": ["True", "False"]
+          }
+        ]
+      }
+    ]
+  },
+  "blank_version": {
+    "sections": [
+      {
+        "format": "multiple_choice",
+        "items": [
+          {
+            "question": "What is X?",
+            "options": ["Option A", "Option B", "Correct answer here", "Option D"]
+          }
+        ]
+      }
+    ]
+  }
+}`;
 
   console.log("Generating quiz for:", topic);
   const result = await createCompletion(prompt);

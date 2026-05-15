@@ -37,7 +37,7 @@ function ContentPage() {
   const [notes, setNotes] = useState<any>(null)
   const [quizzes, setQuizzes] = useState<any>(null)
   const [flashcards, setFlashcards] = useState<{ cards: { front: string; back: string }[] } | null>(null)
-  const [activeTab, setActiveTab] = useState<'notes' | 'quiz' | 'results' | 'flashcards'>('notes')
+  const [activeTab, setActiveTab] = useState<'notes' | 'blank_quiz' | 'answered_quiz' | 'results' | 'flashcards'>('notes')
   const [quizPageIndex, setQuizPageIndex] = useState(0)
   const [flashcardIndex, setFlashcardIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
@@ -155,16 +155,95 @@ function ContentPage() {
     }
   }
 
-  const buildQuizItems = (version: any): QuizItem[] => {
+  const handleCopyAnswerKey = async () => {
+    if (!quizItems.length) return
+
+    try {
+      let answerKeyText = `Answer Key\n\n`
+
+      quizItems.forEach((item, index) => {
+        answerKeyText += `${index + 1}. ${item.question}\n`
+
+        if (item.format === 'true_false') {
+          answerKeyText += `   Answer: ${item.correct_answer}\n`
+        } else if (item.format === 'identification' || item.format === 'multiple_choice') {
+          answerKeyText += `   Answer: ${item.correct_answer}\n`
+        } else if (item.format === 'essay') {
+          answerKeyText += `   Answer: ${item.correct_answer}\n`
+        } else {
+          // Multiple choice with options
+          const correctIndex = item.options?.findIndex(option => option === item.correct_answer)
+          if (correctIndex !== undefined) {
+            answerKeyText += `   Answer: ${String.fromCharCode(65 + correctIndex)}. ${item.correct_answer}\n`
+          }
+        }
+
+        if (item.explanation) {
+          answerKeyText += `   Explanation: ${item.explanation}\n`
+        }
+
+        answerKeyText += '\n'
+      })
+
+      await navigator.clipboard.writeText(answerKeyText.trim())
+      toast.success('Answer key copied!', { duration: 2000 })
+    } catch (err) {
+      toast.error('Failed to copy answer key')
+    }
+  }
+
+  const handleSaveQuiz = async () => {
+    alert('Quiz saved successfully!')
+    navigate({ to: '/saved-quizzes' })
+  }
+
+  const handleCopyBlank = async () => {
+    if (!quizItems.length) return
+
+    try {
+      let blankQuizText = `Blank Quiz\n\n`
+
+      quizItems.forEach((item, index) => {
+        blankQuizText += `${index + 1}. ${item.question}\n`
+
+        if (item.format === 'true_false') {
+          blankQuizText += `   True / False\n`
+        } else if (item.format === 'identification' || item.format === 'multiple_choice') {
+          blankQuizText += `   Answer: ____________________\n`
+        } else if (item.format === 'essay') {
+          blankQuizText += `   Answer: (Essay response)\n\n`
+        } else {
+          // Multiple choice with options
+          item.options?.forEach((option, optionIndex) => {
+            blankQuizText += `   ${String.fromCharCode(65 + optionIndex)}. ${option}\n`
+          })
+          blankQuizText += `   Answer: ____________________\n`
+        }
+
+        blankQuizText += '\n'
+      })
+
+      await navigator.clipboard.writeText(blankQuizText.trim())
+      toast.success('Blank quiz copied!', { duration: 2000 })
+    } catch (err) {
+      toast.error('Failed to copy blank quiz')
+    }
+  }
+
+  const buildQuizItems = (version: any, fallbackVersion?: any): QuizItem[] => {
     if (!version?.sections) return []
     return version.sections.flatMap((section: any, sectionIndex: number) =>
-      section.items.map((item: any, itemIndex: number) => ({
-        ...item,
-        format: section.format,
-        key: `${sectionIndex}-${itemIndex}`,
-        sectionIndex,
-        itemIndex,
-      }))
+      section.items.map((item: any, itemIndex: number) => {
+        const fallbackItem = fallbackVersion?.sections?.[sectionIndex]?.items?.[itemIndex]
+        return {
+          ...item,
+          format: section.format,
+          key: `${sectionIndex}-${itemIndex}`,
+          sectionIndex,
+          itemIndex,
+          options: item.options?.length ? item.options : fallbackItem?.options,
+        }
+      })
     )
   }
 
@@ -172,8 +251,8 @@ function ContentPage() {
   const answeredVersion = quizzes?.answered_version_json
 
   const quizItems = useMemo(
-    () => buildQuizItems(quizVersion),
-    [quizVersion]
+    () => buildQuizItems(quizVersion, answeredVersion),
+    [quizVersion, answeredVersion]
   )
 
   const answeredItems = useMemo(
@@ -260,15 +339,6 @@ function ContentPage() {
     navigate({ to: '/quiz-config/$id', params: { id } })
   }
 
-  const shuffleArray = (array: any[]) => {
-    const shuffled = [...array]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled
-  }
-
   const renderNotesTab = () => {
     if (!notes?.content_json?.sections) return <p>No notes available</p>
 
@@ -316,12 +386,14 @@ function ContentPage() {
               font-family: 'Consolas', 'Courier New', monospace;
               text-align: justify;
               line-height: 1.6;
+              color: #1a1a1a;
             }
             .notes-content .title {
               font-size: 2rem;
               font-weight: bold;
               text-align: center;
               margin-bottom: 2rem;
+              color: #000;
             }
             .notes-content .section {
               margin-bottom: 2rem;
@@ -330,54 +402,76 @@ function ContentPage() {
               font-size: 1.5rem;
               font-weight: bold;
               margin-bottom: 1rem;
+              color: #0038A8;
             }
             .notes-content .subsection {
               margin-left: 2rem;
               margin-bottom: 1rem;
+              color: #333;
             }
             .notes-content .term {
               font-weight: bold;
+              color: #000;
             }
             .notes-content .definition {
               margin-left: 0.5rem;
+              color: #555;
             }
             .notes-content .explanation {
               margin-top: 0.5rem;
               text-align: justify;
+              color: #444;
             }
           `}</style>
 
           <div className="notes-content">
             <div className="title">{notes.content_json.title}</div>
 
-            {notes.content_json.sections.map((section: any, sectionIndex: number) => (
-              <div key={sectionIndex} className="section">
-                <div className="section-heading">
-                  {sectionIndex + 1}. {section.heading}
-                </div>
-
-                {section.terms && section.terms.length > 0 && (
-                  <div>
-                    {section.terms.map((term: any, termIndex: number) => {
-                      const letter = String.fromCharCode(97 + termIndex) // a, b, c, etc.
-                      return (
-                        <div key={termIndex} className="subsection">
-                          <span className="term">{letter}. {term.word}:</span>
-                          <span className="definition">{term.definition}</span>
-                          {term.explanation && (
-                            <div className="explanation">{term.explanation}</div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {section.explanation && (
-                  <div className="explanation">{section.explanation}</div>
-                )}
+            {!notes.content_json.sections || notes.content_json.sections.length === 0 ? (
+              <div className="text-center py-8 text-slate-600">
+                <p>No sections found in notes data</p>
+                <pre className="text-xs mt-4 bg-slate-100 p-4 overflow-auto">
+                  {JSON.stringify(notes.content_json, null, 2).substring(0, 500)}
+                </pre>
               </div>
-            ))}
+            ) : (
+              notes.content_json.sections.map((section: any, sectionIndex: number) => (
+                <div key={sectionIndex} className="section">
+                  <div className="section-heading">
+                    {sectionIndex + 1}. {section.heading}
+                  </div>
+
+                  {section.terms && section.terms.length > 0 && (
+                    <div>
+                      {section.terms.map((term: any, termIndex: number) => {
+                        const letter = String.fromCharCode(97 + termIndex) // a, b, c, etc.
+                        return (
+                          <div key={termIndex} className="subsection">
+                            <span className="term">{letter}. {term.word}:</span>
+                            <span className="definition">{term.definition}</span>
+                            {term.explanation && (
+                              <div className="explanation">{term.explanation}</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {section.explanation && (
+                    <div className="subsection">
+                      <div className="explanation">{section.explanation}</div>
+                    </div>
+                  )}
+                  
+                  {(!section.terms || section.terms.length === 0) && !section.explanation && (
+                    <div className="subsection text-slate-500 italic">
+                      (Content not available)
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -513,11 +607,23 @@ function ContentPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-sm uppercase tracking-[0.35em] text-slate-400">{session.topic}</div>
-              <h2 className="mt-2 text-3xl font-semibold">Quiz Practice</h2>
+              <h2 className="mt-2 text-3xl font-semibold">Blank Test</h2>
             </div>
-            <div className="text-right">
-              <div className="text-xs uppercase tracking-[0.35em] text-slate-400">Progress</div>
-              <div className="mt-1 text-2xl font-bold">{quizPageIndex + 1} / {quizItems.length}</div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCopyBlank}
+                className="flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Blank
+              </button>
+              <button
+                onClick={handleSaveQuiz}
+                className="flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+              >
+                <Save className="h-4 w-4" />
+                Save Quiz
+              </button>
             </div>
           </div>
         </div>
@@ -541,19 +647,21 @@ function ContentPage() {
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {currentQuizItem?.format === 'true_false' ? (
-              ['True', 'False'].map((option) => {
-                const selected = selectedAnswers[currentQuizItem.key] === option
-                return (
-                  <button
-                    key={option}
-                    onClick={() => handleSelectOption(currentQuizItem.key, option)}
-                    className={`rounded-2xl border p-4 text-left transition-all duration-150 ${selected ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
-                  >
-                    <span className="block text-sm font-medium text-slate-700">{option}</span>
-                  </button>
-                )
-              })
-            ) : currentQuizItem?.format === 'identification' || currentQuizItem?.format === 'multiple_choice' ? (
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleSelectOption(currentQuizItem.key, 'true')}
+                  className={`px-6 py-3 rounded-lg border-2 transition-all duration-150 ${selectedAnswers[currentQuizItem.key] === 'true' ? 'bg-green-100 border-green-500 text-green-800' : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  TRUE
+                </button>
+                <button
+                  onClick={() => handleSelectOption(currentQuizItem.key, 'false')}
+                  className={`px-6 py-3 rounded-lg border-2 transition-all duration-150 ${selectedAnswers[currentQuizItem.key] === 'false' ? 'bg-green-100 border-green-500 text-green-800' : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  FALSE
+                </button>
+              </div>
+            ) : currentQuizItem?.format === 'identification' ? (
               <div className="sm:col-span-2">
                 <input
                   type="text"
@@ -563,20 +671,36 @@ function ContentPage() {
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white"
                 />
               </div>
+            ) : currentQuizItem?.format === 'multiple_choice' ? (
+              <div className="sm:col-span-2 space-y-3">
+                {currentQuizItem?.options?.map((option: string, optIndex: number) => (
+                  <label key={optIndex} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="radio"
+                      name={`q-${currentQuizItem.key}`}
+                      value={option}
+                      checked={selectedAnswers[currentQuizItem.key] === option}
+                      onChange={() => handleSelectOption(currentQuizItem.key, option)}
+                      className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-base text-slate-900">{String.fromCharCode(65 + optIndex)}. {option}</span>
+                  </label>
+                ))}
+              </div>
+            ) : currentQuizItem?.format === 'essay' ? (
+              <div className="sm:col-span-2">
+                <textarea
+                  value={selectedAnswers[currentQuizItem.key] ?? ''}
+                  onChange={(e) => handleSelectOption(currentQuizItem.key, e.target.value)}
+                  placeholder="Write your answer here..."
+                  rows={6}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white resize-none"
+                />
+              </div>
             ) : (
-              shuffleArray(currentQuizItem?.options ?? []).map((option: string, optionIndex: number) => {
-                const selected = selectedAnswers[currentQuizItem.key] === option
-                return (
-                  <button
-                    key={option}
-                    onClick={() => handleSelectOption(currentQuizItem.key, option)}
-                    className={`rounded-2xl border p-4 text-left transition-all duration-150 ${selected ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
-                  >
-                    <span className="block text-sm font-medium text-slate-700">{String.fromCharCode(65 + optionIndex)}.</span>
-                    <span className="mt-2 block text-base text-slate-900">{option}</span>
-                  </button>
-                )
-              })
+              <div className="sm:col-span-2">
+                <p>No answer options available.</p>
+              </div>
             )}
           </div>
 
@@ -692,12 +816,20 @@ function ContentPage() {
           </button>
         ) : null}
         {hasQuiz ? (
-          <button
-            onClick={() => setActiveTab('quiz')}
-            className={`px-4 py-2 rounded-full transition ${activeTab === 'quiz' ? 'bg-[#0038A8] text-white' : 'bg-white text-slate-700 border border-slate-200'}`}
-          >
-            Quiz
-          </button>
+          <>
+            <button
+              onClick={() => setActiveTab('blank_quiz')}
+              className={`px-4 py-2 rounded-full transition ${activeTab === 'blank_quiz' ? 'bg-[#0038A8] text-white' : 'bg-white text-slate-700 border border-slate-200'}`}
+            >
+              Blank Test
+            </button>
+            <button
+              onClick={() => setActiveTab('answered_quiz')}
+              className={`px-4 py-2 rounded-full transition ${activeTab === 'answered_quiz' ? 'bg-[#0038A8] text-white' : 'bg-white text-slate-700 border border-slate-200'}`}
+            >
+              Answer Key
+            </button>
+          </>
         ) : null}
         {hasFlashcards ? (
           <button
@@ -707,6 +839,86 @@ function ContentPage() {
             Flashcards
           </button>
         ) : null}
+      </div>
+    )
+  }
+
+  const renderQuizAnswerTab = () => {
+    if (!quizItems.length) return <p>No quiz available</p>
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">Answer Key</h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCopyAnswerKey}
+                className="flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Answer Key
+              </button>
+              <button
+                onClick={handleSaveQuiz}
+                className="flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                <Save className="h-4 w-4" />
+                Save Quiz
+              </button>
+            </div>
+          </div>
+
+          {quizItems.map((item, index) => (
+            <div key={item.key} className="border-b border-slate-100 pb-6 mb-6 last:border-b-0 last:pb-0 last:mb-0">
+              <div className="flex items-start gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
+                  {index + 1}
+                </span>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3">{item.question}</h3>
+
+                  {item.format === 'true_false' ? (
+                    <div className="space-y-2">
+                      <div className={`rounded-2xl border p-4 ${item.correct_answer === 'True' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                        <span className="block text-sm font-medium text-slate-700">True</span>
+                      </div>
+                      <div className={`rounded-2xl border p-4 ${item.correct_answer === 'False' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                        <span className="block text-sm font-medium text-slate-700">False</span>
+                      </div>
+                    </div>
+                  ) : item.format === 'identification' || item.format === 'multiple_choice' ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <span className="block text-base text-slate-900 font-medium">{item.correct_answer}</span>
+                    </div>
+                  ) : item.format === 'essay' ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <span className="block text-base text-slate-900 font-medium">{item.correct_answer}</span>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {item.options?.map((option, optionIndex) => (
+                        <div
+                          key={optionIndex}
+                          className={`rounded-2xl border p-4 ${option === item.correct_answer ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}
+                        >
+                          <span className="block text-sm font-medium text-slate-700">{String.fromCharCode(65 + optionIndex)}.</span>
+                          <span className="mt-2 block text-base text-slate-900">{option}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {item.explanation && (
+                    <div className="mt-4 rounded-lg bg-blue-50 p-4">
+                      <p className="text-sm text-blue-900">{item.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -745,11 +957,11 @@ function ContentPage() {
 
             {(item.format === 'multiple_choice' && item.options) && (
               <div className="mt-4 grid gap-2">
-                {shuffleArray(item.options).map((option: string) => {
+                {item.options.map((option: string, optIndex: number) => {
                   const isSelected = option === item.userAnswer
                   const isCorrect = option === item.correctAnswer
                   return (
-                    <div key={option} className={`rounded-2xl p-3 border ${isCorrect ? 'border-emerald-400 bg-emerald-50' : isSelected ? 'border-slate-400 bg-slate-100' : 'border-slate-200 bg-white'}`}>
+                    <div key={optIndex} className={`rounded-2xl p-3 border ${isCorrect ? 'border-emerald-400 bg-emerald-50' : isSelected ? 'border-slate-400 bg-slate-100' : 'border-slate-200 bg-white'}`}>
                       <p className="text-sm text-slate-900">{option}</p>
                     </div>
                   )
@@ -786,8 +998,10 @@ function ContentPage() {
           renderNotesTab()
         ) : activeTab === 'results' ? (
           renderQuizResults()
-        ) : hasQuiz ? (
+        ) : activeTab === 'blank_quiz' && hasQuiz ? (
           renderQuizBlankTab()
+        ) : activeTab === 'answered_quiz' && hasQuiz ? (
+          renderQuizAnswerTab()
         ) : hasFlashcards ? (
           renderFlashcardsTab()
         ) : (

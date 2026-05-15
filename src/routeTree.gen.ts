@@ -10,12 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SavedQuizzesRouteImport } from './routes/saved-quizzes'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PracticeResultsRouteImport } from './routes/practice-results'
+import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
+import { Route as QuizOverviewIdRouteImport } from './routes/quiz-overview.$id'
 import { Route as QuizConfigSessionIdRouteImport } from './routes/quiz-config.$sessionId'
 import { Route as QuizConfigIdRouteImport } from './routes/quiz-config.$id'
 import { Route as ContentIdRouteImport } from './routes/content.$id'
@@ -26,6 +30,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SavedQuizzesRoute = SavedQuizzesRouteImport.update({
+  id: '/saved-quizzes',
+  path: '/saved-quizzes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
@@ -34,6 +43,16 @@ const SavedRoute = SavedRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeResultsRoute = PracticeResultsRouteImport.update({
+  id: '/practice-results',
+  path: '/practice-results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeRoute = PracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FlashcardsRoute = FlashcardsRouteImport.update({
@@ -54,6 +73,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/auth/',
   path: '/auth/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizOverviewIdRoute = QuizOverviewIdRouteImport.update({
+  id: '/quiz-overview/$id',
+  path: '/quiz-overview/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizConfigSessionIdRoute = QuizConfigSessionIdRouteImport.update({
@@ -81,26 +105,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/flashcards': typeof FlashcardsRoute
+  '/practice': typeof PracticeRoute
+  '/practice-results': typeof PracticeResultsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/saved-quizzes': typeof SavedQuizzesRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
   '/quiz-config/$id': typeof QuizConfigIdRoute
   '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
+  '/quiz-overview/$id': typeof QuizOverviewIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/flashcards': typeof FlashcardsRoute
+  '/practice': typeof PracticeRoute
+  '/practice-results': typeof PracticeResultsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/saved-quizzes': typeof SavedQuizzesRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
   '/quiz-config/$id': typeof QuizConfigIdRoute
   '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
+  '/quiz-overview/$id': typeof QuizOverviewIdRoute
   '/auth': typeof AuthIndexRoute
 }
 export interface FileRoutesById {
@@ -108,13 +140,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/flashcards': typeof FlashcardsRoute
+  '/practice': typeof PracticeRoute
+  '/practice-results': typeof PracticeResultsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
+  '/saved-quizzes': typeof SavedQuizzesRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/content/$id': typeof ContentIdRoute
   '/quiz-config/$id': typeof QuizConfigIdRoute
   '/quiz-config/$sessionId': typeof QuizConfigSessionIdRoute
+  '/quiz-overview/$id': typeof QuizOverviewIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRouteTypes {
@@ -123,39 +159,51 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/flashcards'
+    | '/practice'
+    | '/practice-results'
     | '/profile'
     | '/saved'
+    | '/saved-quizzes'
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
     | '/quiz-config/$id'
     | '/quiz-config/$sessionId'
+    | '/quiz-overview/$id'
     | '/auth/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/flashcards'
+    | '/practice'
+    | '/practice-results'
     | '/profile'
     | '/saved'
+    | '/saved-quizzes'
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
     | '/quiz-config/$id'
     | '/quiz-config/$sessionId'
+    | '/quiz-overview/$id'
     | '/auth'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/flashcards'
+    | '/practice'
+    | '/practice-results'
     | '/profile'
     | '/saved'
+    | '/saved-quizzes'
     | '/settings'
     | '/auth/callback'
     | '/content/$id'
     | '/quiz-config/$id'
     | '/quiz-config/$sessionId'
+    | '/quiz-overview/$id'
     | '/auth/'
   fileRoutesById: FileRoutesById
 }
@@ -163,13 +211,17 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   FlashcardsRoute: typeof FlashcardsRoute
+  PracticeRoute: typeof PracticeRoute
+  PracticeResultsRoute: typeof PracticeResultsRoute
   ProfileRoute: typeof ProfileRoute
   SavedRoute: typeof SavedRoute
+  SavedQuizzesRoute: typeof SavedQuizzesRoute
   SettingsRoute: typeof SettingsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ContentIdRoute: typeof ContentIdRoute
   QuizConfigIdRoute: typeof QuizConfigIdRoute
   QuizConfigSessionIdRoute: typeof QuizConfigSessionIdRoute
+  QuizOverviewIdRoute: typeof QuizOverviewIdRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
@@ -180,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved-quizzes': {
+      id: '/saved-quizzes'
+      path: '/saved-quizzes'
+      fullPath: '/saved-quizzes'
+      preLoaderRoute: typeof SavedQuizzesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/saved': {
@@ -194,6 +253,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice-results': {
+      id: '/practice-results'
+      path: '/practice-results'
+      fullPath: '/practice-results'
+      preLoaderRoute: typeof PracticeResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice': {
+      id: '/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof PracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/flashcards': {
@@ -222,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth/'
       preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz-overview/$id': {
+      id: '/quiz-overview/$id'
+      path: '/quiz-overview/$id'
+      fullPath: '/quiz-overview/$id'
+      preLoaderRoute: typeof QuizOverviewIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quiz-config/$sessionId': {
@@ -259,13 +339,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   FlashcardsRoute: FlashcardsRoute,
+  PracticeRoute: PracticeRoute,
+  PracticeResultsRoute: PracticeResultsRoute,
   ProfileRoute: ProfileRoute,
   SavedRoute: SavedRoute,
+  SavedQuizzesRoute: SavedQuizzesRoute,
   SettingsRoute: SettingsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ContentIdRoute: ContentIdRoute,
   QuizConfigIdRoute: QuizConfigIdRoute,
   QuizConfigSessionIdRoute: QuizConfigSessionIdRoute,
+  QuizOverviewIdRoute: QuizOverviewIdRoute,
   AuthIndexRoute: AuthIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -19,6 +19,7 @@ function QuizConfigPage() {
   const [loading, setLoading] = useState(false)
   const [session, setSession] = useState<any>(null)
   const [notes, setNotes] = useState<any>(null)
+  const [fileContent, setFileContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [quizConfig, setQuizConfig] = useState<Record<QuizFormat, number>>({
@@ -44,7 +45,13 @@ function QuizConfigPage() {
 
         setSession(sessionData)
 
-        // Fetch notes for context
+        // Try to get file content from localStorage
+        const storedFileContent = localStorage.getItem(`quiz_file_content_${sessionId}`)
+        if (storedFileContent) {
+          setFileContent(storedFileContent)
+        }
+
+        // Fetch notes for context if they exist
         if (sessionData.generated_types?.includes('notes')) {
           const { data: notesData, error: notesError } = await supabase
             .from('notes')
@@ -75,7 +82,7 @@ function QuizConfigPage() {
   }
 
   const handleGenerateQuiz = async () => {
-    if (!user || !session || !notes) return
+    if (!user || !session) return
 
     if (getTotalQuestions() === 0) {
       setError('Please select at least one question type')
@@ -86,27 +93,34 @@ function QuizConfigPage() {
     setError(null)
 
     try {
-      // Prepare context from notes
-      let context = `Based on these study notes:\n\n${notes.content_json.title}\n\n`
+      let context = ''
 
-      notes.content_json.sections.forEach((section: any, sectionIndex: number) => {
-        context += `${sectionIndex + 1}. ${section.heading}\n`
+      // Build context from notes if available
+      if (notes) {
+        context = `Based on these study notes:\n\n${notes.content_json.title}\n\n`
 
-        if (section.terms && section.terms.length > 0) {
-          section.terms.forEach((term: any, termIndex: number) => {
-            const letter = String.fromCharCode(97 + termIndex)
-            context += `  ${letter}. ${term.word}: ${term.definition}\n`
-          })
-        }
+        notes.content_json.sections.forEach((section: any, sectionIndex: number) => {
+          context += `${sectionIndex + 1}. ${section.heading}\n`
 
-        if (section.explanation) {
-          context += `  ${section.explanation}\n`
-        }
+          if (section.terms && section.terms.length > 0) {
+            section.terms.forEach((term: any, termIndex: number) => {
+              const letter = String.fromCharCode(97 + termIndex)
+              context += `  ${letter}. ${term.word}: ${term.definition}\n`
+            })
+          }
 
-        context += '\n'
-      })
+          if (section.explanation) {
+            context += `  ${section.explanation}\n`
+          }
 
-      // Generate quiz with notes as context
+          context += '\n'
+        })
+      } else if (fileContent) {
+        // Use file content if no notes available
+        context = `Based on the uploaded document:\n\n${fileContent}`
+      }
+
+      // Generate quiz with context
       const quizResult = await generateQuiz(session.topic, { formats: quizConfig }, context)
 
       // Save quiz to database
@@ -130,6 +144,13 @@ function QuizConfigPage() {
         .eq('id', Number(sessionId))
 
       if (updateError) throw updateError
+
+      // Clean up localStorage
+      try {
+        localStorage.removeItem(`quiz_file_content_${sessionId}`)
+      } catch {
+        // Ignore cleanup failures
+      }
 
       // Navigate back to content page
       navigate({ to: '/content/$id', params: { id: sessionId } })
@@ -158,7 +179,7 @@ function QuizConfigPage() {
     )
   }
 
-  if (!session || !notes) {
+  if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
