@@ -36,7 +36,7 @@ function QuizConfigPage() {
         const { data: sessionData, error: sessionError } = await supabase
           .from('study_sessions')
           .select('*')
-          .eq('id', sessionId)
+          .eq('id', Number(sessionId))
           .single()
 
         if (sessionError) throw sessionError
@@ -49,7 +49,7 @@ function QuizConfigPage() {
           const { data: notesData, error: notesError } = await supabase
             .from('notes')
             .select('*')
-            .eq('session_id', sessionId)
+            .eq('session_id', Number(sessionId))
             .single()
 
           if (notesError) throw notesError
@@ -113,7 +113,7 @@ function QuizConfigPage() {
       const { error: insertError } = await supabase
         .from('quizzes')
         .insert({
-          session_id: sessionId,
+          session_id: Number(sessionId),
           answered_version_json: quizResult.answered_version,
           blank_version_json: quizResult.blank_version,
           config_json: quizConfig,
@@ -127,7 +127,7 @@ function QuizConfigPage() {
         .update({
           generated_types: [...(session.generated_types || []), 'quiz']
         })
-        .eq('id', sessionId)
+        .eq('id', Number(sessionId))
 
       if (updateError) throw updateError
 

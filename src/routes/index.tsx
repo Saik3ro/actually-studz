@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
-import { Search, Paperclip, BookOpen, HelpCircle, ArrowRight, Loader2 } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { Search, Paperclip, BookOpen, HelpCircle, Layers, ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../contexts/AuthContext";
-import { generateNotes, generateQuiz } from "../lib/gemini";
+import { generateNotes, generateQuiz, generateFlashcards } from "../lib/gemini";
+import { extractTextFromFile, generateTitleFromContent } from "../lib/file-processor";
 import supabase from "../lib/supabaseClient";
 
 export const Route = createFileRoute("/")({
@@ -16,12 +17,33 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type ContentType = "notes" | "quiz";
+type ContentType = "notes" | "quiz" | "flashcards";
 
 type GenerationResult = {
   notes?: Awaited<ReturnType<typeof generateNotes>>;
   quiz?: Awaited<ReturnType<typeof generateQuiz>>;
+  flashcards?: { cards: { front: string; back: string }[] };
 };
+
+function PreviewFace({
+  children,
+  back = false,
+}: {
+  children: ReactNode;
+  back?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 rounded-[2rem] border border-border shadow-lg flex flex-col items-center justify-center p-8 text-center [backface-visibility:hidden]",
+        back ? "bg-primary text-primary-foreground" : "bg-card"
+      )}
+      style={{ transform: back ? "rotateY(180deg)" : undefined }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function Index() {
   const navigate = useNavigate();
@@ -29,14 +51,22 @@ function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [topic, setTopic] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<ContentType[]>([]);
+  const [previewFlipped, setPreviewFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const canProceed = topic.trim().length > 0;
+  const canProceed = topic.trim().length > 0 || (fileName !== null && fileContent !== null);
   const hasSelection = selectedTypes.length > 0;
   const canGenerate = canProceed && hasSelection && !loading;
+
+  const flashcardPreview = {
+    front: "What is Proteus?",
+    back: "Proteus is a mythical sea god in Greek mythology known for changing shape and form.",
+  };
 
   const toggleType = (type: ContentType) => {
     setSelectedTypes((current) =>
@@ -47,6 +77,35 @@ function Index() {
   const getMode = () => {
     if (selectedTypes.length === 1) return selectedTypes[0];
     return "both";
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setErrorMessage(null);
+    setFileName(selectedFile.name);
+    setFile(selectedFile);
+
+    try {
+      const content = await extractTextFromFile(selectedFile);
+      setFileContent(content);
+
+      // Auto-populate topic from file content if topic is empty
+      if (!topic.trim()) {
+        const generatedTitle = generateTitleFromContent(content, selectedFile.name);
+        setTopic(generatedTitle);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to read file. Please try a different file format."
+      );
+      setFileName(null);
+      setFile(null);
+      setFileContent(null);
+    }
   };
 
   const handleGenerate = async () => {
@@ -64,7 +123,15 @@ function Index() {
     setResult(null);
 
     try {
-      const context = fileName ? `Uploaded file: ${fileName}` : undefined;
+      let context: string | undefined;
+      if (fileContent) {
+        // If file content is available, use it as context
+        context = `Uploaded file content (${fileName}):\n\n${fileContent}`;
+      } else if (fileName) {
+        // Fallback if file is present but content couldn't be extracted
+        context = `Uploaded file: ${fileName}`;
+      }
+
       const sessionPayload = {
         user_id: user.id,
         input_type: fileName ? "file" as const : "topic" as const,
@@ -86,39 +153,62 @@ function Index() {
       const sessionId = sessionData.id;
       const promises: Promise<any>[] = [];
       const generation: GenerationResult = {};
+      const generationTasks: Promise<void>[] = [];
 
       if (selectedTypes.includes("notes")) {
-        const notesResult = await generateNotes(topic.trim(), context);
-        generation.notes = notesResult;
-        promises.push(
-          supabase.from("notes").insert({
-            session_id: sessionId,
-            title: notesResult.title,
-            content_json: notesResult,
-          }),
-        );
+        generationTasks.push((async () => {
+          const notesResult = await generateNotes(topic.trim(), context);
+          generation.notes = notesResult;
+          promises.push(
+            supabase.from("notes").insert({
+              session_id: sessionId,
+              title: notesResult.title,
+              content_json: notesResult,
+            }),
+          );
+        })());
       }
 
       if (selectedTypes.includes("quiz")) {
-        const quizConfig = {
-          formats: {
-            multiple_choice: 5,
-            identification: 3,
-            true_false: 2,
-          },
-        };
-        const quizResult = await generateQuiz(topic.trim(), quizConfig, context);
-        generation.quiz = quizResult;
-        promises.push(
-          supabase.from("quizzes").insert({
-            session_id: sessionId,
-            answered_version_json: quizResult.answered_version,
-            blank_version_json: quizResult.blank_version,
-            config_json: quizConfig,
-          }),
-        );
+        generationTasks.push((async () => {
+          const quizConfig = {
+            formats: {
+              multiple_choice: 5,
+              identification: 3,
+              true_false: 2,
+            },
+          };
+          const quizResult = await generateQuiz(topic.trim(), quizConfig, context);
+          generation.quiz = quizResult;
+          promises.push(
+            supabase.from("quizzes").insert({
+              session_id: sessionId,
+              answered_version_json: quizResult.answered_version,
+              blank_version_json: quizResult.blank_version,
+              config_json: quizConfig,
+            }),
+          );
+        })());
       }
 
+      if (selectedTypes.includes("flashcards")) {
+        generationTasks.push((async () => {
+          const flashcardsResult = await generateFlashcards(topic.trim(), 6, context);
+          generation.flashcards = flashcardsResult;
+          if (typeof window !== "undefined") {
+            try {
+              window.localStorage.setItem(
+                `actualystudz_flashcards_${sessionId}`,
+                JSON.stringify(flashcardsResult),
+              );
+            } catch {
+              // ignore storage failures
+            }
+          }
+        })());
+      }
+
+      await Promise.all(generationTasks);
       const insertResults = await Promise.all(promises);
       const insertError = insertResults.find((result) => (result as any).error)?.error;
       if (insertError) {
@@ -158,7 +248,7 @@ function Index() {
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Enter a topic or upload a PDF..."
+              placeholder="Enter a topic or upload a PDF... (no topic needed if file attached)"
               className="flex-1 bg-transparent py-2 text-base sm:text-lg text-foreground placeholder:text-muted-foreground outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && hasSelection) {
@@ -179,7 +269,7 @@ function Index() {
               type="file"
               accept=".pdf,.doc,.docx,.txt"
               className="hidden"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+              onChange={handleFileChange}
             />
           </div>
           {fileName && (
@@ -195,7 +285,7 @@ function Index() {
         </div>
 
         {/* Action cards */}
-        <div className="mt-10 grid w-full grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div className="mt-10 grid w-full grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           <ToggleCard
             icon={<BookOpen className="h-6 w-6" />}
             emoji="📝"
@@ -214,7 +304,49 @@ function Index() {
             onToggle={() => toggleType("quiz")}
             disabled={loading}
           />
+          <ToggleCard
+            icon={<Layers className="h-6 w-6" />}
+            emoji="🃏"
+            title="Flashcards"
+            description="Interactive cards you can flip to reveal the answer."
+            selected={selectedTypes.includes("flashcards")}
+            onToggle={() => toggleType("flashcards")}
+            disabled={loading}
+          />
         </div>
+
+        {selectedTypes.includes("flashcards") ? (
+          <div className="mt-10 w-full rounded-[2rem] border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
+              <div>
+                <p className="text-sm font-semibold text-primary">Flashcard Preview</p>
+                <h2 className="mt-2 text-2xl font-bold text-foreground">Tap to flip the card and see the answer.</h2>
+              </div>
+              <p className="max-w-xl text-sm text-muted-foreground">
+                Use flashcards to quiz yourself with front/back cards and build recall.
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setPreviewFlipped((value) => !value)}
+                className="relative w-full max-w-2xl aspect-[4/3] sm:aspect-[16/9] [perspective:1200px] rounded-[2rem]"
+                style={{ transformStyle: "preserve-3d", transform: previewFlipped ? "rotateY(180deg)" : "rotateY(0)" }}
+              >
+                <PreviewFace>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Front</span>
+                  <p className="mt-3 text-3xl font-bold text-foreground">{flashcardPreview.front}</p>
+                </PreviewFace>
+                <PreviewFace back>
+                  <span className="text-xs uppercase tracking-widest text-primary-foreground/80">Back</span>
+                  <p className="mt-3 text-xl font-medium text-primary-foreground leading-relaxed">{flashcardPreview.back}</p>
+                </PreviewFace>
+              </button>
+            </div>
+            <p className="mt-4 text-center text-sm text-muted-foreground">Click the card to flip it.</p>
+          </div>
+        ) : null}
 
         {hasSelection ? (
           <div className="mt-8 flex flex-col items-center gap-3">
