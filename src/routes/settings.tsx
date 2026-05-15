@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Settings as SettingsIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/settings")({
@@ -11,6 +11,13 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   const [dark, setDark] = useState(false);
   const [notif, setNotif] = useState(true);
+
+  // Load dark mode preference on mount
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem("darkMode") === "true";
+    setDark(savedDarkMode);
+    document.documentElement.classList.toggle("dark", savedDarkMode);
+  }, []);
 
   return (
     <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-10 sm:py-14">
@@ -32,6 +39,7 @@ function SettingsPage() {
           onChange={(v) => {
             setDark(v);
             document.documentElement.classList.toggle("dark", v);
+            localStorage.setItem("darkMode", String(v));
           }}
         />
         <Toggle

@@ -64,9 +64,6 @@ function QuizOverviewPage() {
     const formatLabels: Record<string, string> = {
       multiple_choice: 'Multiple Choice',
       true_false: 'True/False',
-      identification: 'Identification',
-      essay: 'Essay',
-      math_problems: 'Math Problems',
     }
 
     const formats = Object.entries(config.formats)

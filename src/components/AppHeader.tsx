@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, BookOpen, Bookmark, User, Settings, Layers, Info, LogIn } from "lucide-react";
+import { Menu, BookOpen, Bookmark, User, Settings, Layers, Info, LogIn, HelpCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +50,12 @@ export function AppHeader() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/saved" className="flex items-center gap-2 cursor-pointer">
-                  <Bookmark className="h-4 w-4" /> Saved Topics
+                  <Bookmark className="h-4 w-4" /> Saved Notes
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/saved-quizzes" className="flex items-center gap-2 cursor-pointer">
+                  <HelpCircle className="h-4 w-4" /> Saved Quizzes
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

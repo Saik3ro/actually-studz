@@ -9,7 +9,7 @@ export const Route = createFileRoute('/quiz-config/$id')({
   component: QuizConfigPage,
 })
 
-type QuizFormat = 'multiple_choice' | 'true_false' | 'identification' | 'essay' | 'math_problems'
+type QuizFormat = 'multiple_choice' | 'true_false'
 
 interface FormatConfig {
   enabled: boolean
@@ -31,9 +31,6 @@ function QuizConfigPage() {
   const [formats, setFormats] = useState<Record<QuizFormat, FormatConfig>>({
     multiple_choice: { enabled: true, count: 5, max: 20 },
     true_false: { enabled: true, count: 3, max: 20 },
-    identification: { enabled: true, count: 3, max: 20 },
-    essay: { enabled: false, count: 1, max: 10 },
-    math_problems: { enabled: false, count: 1, max: 10 },
   })
 
   const updateFormat = (format: QuizFormat, updates: Partial<FormatConfig>) => {
@@ -82,20 +79,25 @@ function QuizConfigPage() {
         if (!sessionData) throw new Error('Study session not found')
         setSession(sessionData)
 
-        const { data: notesData, error: notesError } = await supabase
-          .from('notes')
-          .select('*')
-          .eq('session_id', sessionId)
-          .single()
+        // Only fetch notes if they were actually generated
+        if (sessionData.generated_types?.includes('notes')) {
+          const { data: notesData, error: notesError } = await supabase
+            .from('notes')
+            .select('*')
+            .eq('session_id', sessionId)
+            .single()
 
-        if (notesError) {
-          if (notesError.message?.includes('No rows')) {
-            setNotes(null)
+          if (notesError) {
+            if (notesError.message?.includes('No rows')) {
+              setNotes(null)
+            } else {
+              throw notesError
+            }
           } else {
-            throw notesError
+            setNotes(notesData)
           }
         } else {
-          setNotes(notesData)
+          setNotes(null)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load session notes')
@@ -178,17 +180,11 @@ function QuizConfigPage() {
   const formatLabels: Record<QuizFormat, string> = {
     multiple_choice: 'Multiple Choice',
     true_false: 'True or False',
-    identification: 'Identification',
-    essay: 'Essay',
-    math_problems: 'Math Problems',
   }
 
   const formatDescriptions: Record<QuizFormat, string> = {
     multiple_choice: 'Choose the correct answer from multiple options',
     true_false: 'Determine if statements are true or false',
-    identification: 'Provide the correct term or answer',
-    essay: 'Write detailed responses to questions',
-    math_problems: 'Solve mathematical problems and equations',
   }
 
   if (!loading && !session) {

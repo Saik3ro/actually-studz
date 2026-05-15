@@ -5,7 +5,7 @@ import supabase from "../lib/supabaseClient";
 
 export const Route = createFileRoute("/saved")({
   component: SavedPage,
-  head: () => ({ meta: [{ title: "Saved Topics — Actually.Studz 🤓" }] }),
+  head: () => ({ meta: [{ title: "Saved Notes — Actually.Studz 🤓" }] }),
 });
 
 type SavedTopic = {
@@ -35,16 +35,18 @@ function SavedPage() {
 
         if (error) throw error;
 
-        const topics: SavedTopic[] = (data || []).map((session) => ({
-          id: session.id.toString(),
-          title: session.topic || "Untitled Topic",
-          date: new Date(session.created_at).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          has: session.generated_types || [],
-        }));
+        const topics: SavedTopic[] = (data || [])
+          .filter((session) => session.generated_types?.includes("notes"))
+          .map((session) => ({
+            id: session.id.toString(),
+            title: session.topic || "Untitled Topic",
+            date: new Date(session.created_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }),
+            has: session.generated_types || [],
+          }));
 
         setSavedTopics(topics);
       } catch (error) {
@@ -62,11 +64,11 @@ function SavedPage() {
       <section className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Bookmark className="h-6 w-6" />
+            <BookOpen className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Topics</h1>
-            <p className="text-sm text-muted-foreground">Your library of generated study material.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Notes</h1>
+            <p className="text-sm text-muted-foreground">Your library of study notes.</p>
           </div>
         </div>
         <div className="mt-8 text-center text-muted-foreground">Loading...</div>
@@ -78,17 +80,17 @@ function SavedPage() {
     <section className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Bookmark className="h-6 w-6" />
+          <BookOpen className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Topics</h1>
-          <p className="text-sm text-muted-foreground">Your library of generated study material.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Notes</h1>
+          <p className="text-sm text-muted-foreground">Your library of study notes.</p>
         </div>
       </div>
 
       {savedTopics.length === 0 ? (
         <div className="mt-8 text-center">
-          <p className="text-muted-foreground">No saved topics yet. Generate your first study material!</p>
+          <p className="text-muted-foreground">No saved notes yet. Generate your first study material!</p>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

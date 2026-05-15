@@ -16,9 +16,8 @@ function AboutPage() {
       <h1 className="text-3xl font-bold tracking-tight">About Actually.Studz 🤓</h1>
       <p className="mt-4 text-muted-foreground leading-relaxed">
         Actually.Studz is a study companion that turns any topic or PDF into clean
-        notes, quizzes, and flashcards. Built with the spirit of the University of
-        Science and Technology of Southern Philippines — focused, clear, and a little
-        playful.
+        notes, quizzes, and flashcards. Designed with principles of academic excellence — 
+        focused, clear, and a little playful.
       </p>
       <Link
         to="/"

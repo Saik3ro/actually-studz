@@ -223,7 +223,6 @@ function Index() {
           const quizConfig = {
             formats: {
               multiple_choice: 5,
-              identification: 3,
               true_false: 2,
             },
           };

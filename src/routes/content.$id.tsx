@@ -165,16 +165,14 @@ function ContentPage() {
         answerKeyText += `${index + 1}. ${item.question}\n`
 
         if (item.format === 'true_false') {
-          answerKeyText += `   Answer: ${item.correct_answer}\n`
-        } else if (item.format === 'identification' || item.format === 'multiple_choice') {
-          answerKeyText += `   Answer: ${item.correct_answer}\n`
-        } else if (item.format === 'essay') {
-          answerKeyText += `   Answer: ${item.correct_answer}\n`
+          answerKeyText += `   Answer: ${item.answer}\n`
+        } else if (item.format === 'multiple_choice') {
+          answerKeyText += `   Answer: ${item.answer}\n`
         } else {
           // Multiple choice with options
-          const correctIndex = item.options?.findIndex(option => option === item.correct_answer)
+          const correctIndex = item.options?.findIndex(option => option === item.answer)
           if (correctIndex !== undefined) {
-            answerKeyText += `   Answer: ${String.fromCharCode(65 + correctIndex)}. ${item.correct_answer}\n`
+            answerKeyText += `   Answer: ${String.fromCharCode(65 + correctIndex)}. ${item.answer}\n`
           }
         }
 
@@ -193,8 +191,64 @@ function ContentPage() {
   }
 
   const handleSaveQuiz = async () => {
-    alert('Quiz saved successfully!')
-    navigate({ to: '/saved-quizzes' })
+    if (!user || !session || !quizzes) {
+      toast.error('Unable to save quiz. Please try again.')
+      return
+    }
+
+    if (!quizItems || quizItems.length === 0) {
+      toast.error('No quiz items to save.')
+      return
+    }
+
+    try {
+      const sessionId = Number(id)
+      if (isNaN(sessionId)) {
+        throw new Error(`Invalid session ID: ${id}`)
+      }
+
+      const quizDataToSave = {
+        items: quizItems,
+        answered_items: answeredItems,
+      }
+
+      // Validate data is JSON serializable
+      JSON.stringify(quizDataToSave)
+
+      console.log('Saving quiz with data:', {
+        user_id: user.id,
+        session_id: sessionId,
+        title: session.topic || 'Untitled Quiz',
+        quiz_data: quizDataToSave,
+      })
+
+      const { data, error } = await supabase
+        .from('saved_quizzes')
+        .insert({
+          user_id: user.id,
+          session_id: sessionId,
+          title: session.topic || 'Untitled Quiz',
+          quiz_data: quizDataToSave,
+        })
+        .select()
+
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        })
+        throw error
+      }
+
+      toast.success('Quiz saved successfully!', { duration: 2000 })
+      navigate({ to: '/saved-quizzes' })
+    } catch (err) {
+      console.error('Error saving quiz:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save quiz'
+      toast.error(errorMessage)
+    }
   }
 
   const handleCopyBlank = async () => {
@@ -208,11 +262,7 @@ function ContentPage() {
 
         if (item.format === 'true_false') {
           blankQuizText += `   True / False\n`
-        } else if (item.format === 'identification' || item.format === 'multiple_choice') {
-          blankQuizText += `   Answer: ____________________\n`
-        } else if (item.format === 'essay') {
-          blankQuizText += `   Answer: (Essay response)\n\n`
-        } else {
+        } else if (item.format === 'multiple_choice') {
           // Multiple choice with options
           item.options?.forEach((option, optionIndex) => {
             blankQuizText += `   ${String.fromCharCode(65 + optionIndex)}. ${option}\n`
@@ -235,13 +285,15 @@ function ContentPage() {
     return version.sections.flatMap((section: any, sectionIndex: number) =>
       section.items.map((item: any, itemIndex: number) => {
         const fallbackItem = fallbackVersion?.sections?.[sectionIndex]?.items?.[itemIndex]
+        const options = item.options?.length ? item.options : fallbackItem?.options
+        
         return {
           ...item,
           format: section.format,
           key: `${sectionIndex}-${itemIndex}`,
           sectionIndex,
           itemIndex,
-          options: item.options?.length ? item.options : fallbackItem?.options,
+          options: options || undefined,
         }
       })
     )
@@ -269,9 +321,10 @@ function ContentPage() {
   })
 
   const quizResultItems = useMemo<QuizResultItem[]>(() =>
-    quizItems.map((item, index) => {
+    quizItems.map((item) => {
       const userAnswer = selectedAnswers[item.key] ?? ''
-      const correctAnswer = answeredItems[index]?.answer
+      // Get the correct answer directly from the answered version using section and item indices
+      const correctAnswer = answeredVersion?.sections?.[item.sectionIndex]?.items?.[item.itemIndex]?.answer
       const normalize = (value: any) => String(value ?? '').trim().toLowerCase()
       const isCorrect = normalize(userAnswer) === normalize(correctAnswer)
 
@@ -282,7 +335,7 @@ function ContentPage() {
         isCorrect,
       }
     }),
-    [quizItems, answeredItems, selectedAnswers]
+    [quizItems, answeredVersion, selectedAnswers]
   )
 
   const quizScore = quizResultItems.filter((item) => item.isCorrect).length
@@ -290,9 +343,6 @@ function ContentPage() {
   const questionTypeLabels: Record<string, string> = {
     multiple_choice: 'Definition',
     true_false: 'True or False',
-    identification: 'Identification',
-    fill_blank: 'Fill in the Blank',
-    essay: 'Essay',
   }
 
   const handleSelectOption = (itemKey: string, value: string) => {
@@ -500,22 +550,10 @@ function ContentPage() {
                   </div>
                 )}
                 
-                {section.format === 'identification' && (
-                  <p className="text-green-700 font-medium">Answer: {item.answer}</p>
-                )}
-                
                 {section.format === 'true_false' && (
                   <p className={`font-medium ${item.answer ? 'text-green-700' : 'text-red-700'}`}>
                     {item.answer ? 'True' : 'False'}
                   </p>
-                )}
-                
-                {section.format === 'fill_blank' && (
-                  <p className="text-green-700 font-medium">Answer: {item.answer}</p>
-                )}
-                
-                {section.format === 'essay' && (
-                  <p className="text-green-700 font-medium">Answer: {item.answer}</p>
                 )}
                 
                 {item.explanation && (
@@ -637,9 +675,7 @@ function ContentPage() {
           </div>
 
           <p className="text-sm uppercase tracking-[0.2em] text-slate-500 mb-3">
-            {currentQuizItem?.format === 'identification' || currentQuizItem?.format === 'multiple_choice'
-              ? 'Type your answer'
-              : 'Choose an answer'}
+            Choose an answer
           </p>
           <p className="text-xl font-semibold text-slate-900 leading-relaxed">
             {currentQuizItem?.question}
@@ -661,16 +697,6 @@ function ContentPage() {
                   FALSE
                 </button>
               </div>
-            ) : currentQuizItem?.format === 'identification' ? (
-              <div className="sm:col-span-2">
-                <input
-                  type="text"
-                  value={selectedAnswers[currentQuizItem.key] ?? ''}
-                  onChange={(e) => handleSelectOption(currentQuizItem.key, e.target.value)}
-                  placeholder="Type your answer here"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white"
-                />
-              </div>
             ) : currentQuizItem?.format === 'multiple_choice' ? (
               <div className="sm:col-span-2 space-y-3">
                 {currentQuizItem?.options?.map((option: string, optIndex: number) => (
@@ -686,16 +712,6 @@ function ContentPage() {
                     <span className="text-base text-slate-900">{String.fromCharCode(65 + optIndex)}. {option}</span>
                   </label>
                 ))}
-              </div>
-            ) : currentQuizItem?.format === 'essay' ? (
-              <div className="sm:col-span-2">
-                <textarea
-                  value={selectedAnswers[currentQuizItem.key] ?? ''}
-                  onChange={(e) => handleSelectOption(currentQuizItem.key, e.target.value)}
-                  placeholder="Write your answer here..."
-                  rows={6}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white resize-none"
-                />
               </div>
             ) : (
               <div className="sm:col-span-2">
@@ -844,7 +860,7 @@ function ContentPage() {
   }
 
   const renderQuizAnswerTab = () => {
-    if (!quizItems.length) return <p>No quiz available</p>
+    if (!answeredItems.length) return <p>No quiz available</p>
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -869,7 +885,7 @@ function ContentPage() {
             </div>
           </div>
 
-          {quizItems.map((item, index) => (
+          {answeredItems.map((item, index) => (
             <div key={item.key} className="border-b border-slate-100 pb-6 mb-6 last:border-b-0 last:pb-0 last:mb-0">
               <div className="flex items-start gap-4">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
@@ -879,28 +895,15 @@ function ContentPage() {
                   <h3 className="text-lg font-semibold text-slate-900 mb-3">{item.question}</h3>
 
                   {item.format === 'true_false' ? (
-                    <div className="space-y-2">
-                      <div className={`rounded-2xl border p-4 ${item.correct_answer === 'True' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
-                        <span className="block text-sm font-medium text-slate-700">True</span>
-                      </div>
-                      <div className={`rounded-2xl border p-4 ${item.correct_answer === 'False' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
-                        <span className="block text-sm font-medium text-slate-700">False</span>
-                      </div>
-                    </div>
-                  ) : item.format === 'identification' || item.format === 'multiple_choice' ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <span className="block text-base text-slate-900 font-medium">{item.correct_answer}</span>
-                    </div>
-                  ) : item.format === 'essay' ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <span className="block text-base text-slate-900 font-medium">{item.correct_answer}</span>
+                    <div className="rounded-2xl border border-emerald-500 bg-emerald-50 p-4">
+                      <p className="text-sm font-medium text-slate-700">Answer: <span className="text-base font-semibold text-slate-900">{item.answer === true || item.answer === 'true' || item.answer === 'True' ? 'True' : 'False'}</span></p>
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {item.options?.map((option, optionIndex) => (
                         <div
                           key={optionIndex}
-                          className={`rounded-2xl border p-4 ${option === item.correct_answer ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}
+                          className={`rounded-2xl border p-4 ${option === item.answer ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}
                         >
                           <span className="block text-sm font-medium text-slate-700">{String.fromCharCode(65 + optionIndex)}.</span>
                           <span className="mt-2 block text-base text-slate-900">{option}</span>
@@ -969,7 +972,7 @@ function ContentPage() {
               </div>
             )}
 
-            {(item.format === 'identification' || item.format === 'true_false') && (
+            {(item.format === 'true_false') && (
               <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Your answer</p>

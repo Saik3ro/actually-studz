@@ -27,6 +27,7 @@ export interface Database {
         Row: {
           id: number;
           session_id: number;
+          user_id: string;
           title: string;
           content_json: any;
           created_at: string;
@@ -36,6 +37,7 @@ export interface Database {
         Row: {
           id: number;
           session_id: number;
+          user_id: string;
           answered_version_json: any;
           blank_version_json: any;
           config_json: any;
@@ -57,6 +59,7 @@ export interface Database {
         Row: {
           id: number;
           deck_id: number;
+          user_id: string;
           front: string;
           back: string;
           difficulty: "easy" | "medium" | "hard";
