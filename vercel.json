@@ -2,5 +2,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "memory": 512,
+      "maxDuration": 60
+    }
+  }
 }
