@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Settings, ChevronLeft, Loader2 } from 'lucide-react'
 import { generateQuiz } from '../lib/gemini'
 import supabase from '../lib/supabaseClient'
@@ -24,6 +24,8 @@ function QuizConfigPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [session, setSession] = useState<any | null>(null)
+  const [notes, setNotes] = useState<any | null>(null)
 
   const [formats, setFormats] = useState<Record<QuizFormat, FormatConfig>>({
     multiple_choice: { enabled: true, count: 5, max: 20 },
@@ -63,9 +65,56 @@ function QuizConfigPage() {
     return null
   }
 
+  useEffect(() => {
+    const fetchSessionAndNotes = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('study_sessions')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (sessionError) throw sessionError
+        if (!sessionData) throw new Error('Study session not found')
+        setSession(sessionData)
+
+        const { data: notesData, error: notesError } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('session_id', id)
+          .single()
+
+        if (notesError) {
+          if (notesError.message?.includes('No rows')) {
+            setError('No notes available for this session')
+            setNotes(null)
+          } else {
+            throw notesError
+          }
+        } else {
+          setNotes(notesData)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load session notes')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSessionAndNotes()
+  }, [id])
+
   const handleGenerate = async () => {
     if (!user) {
       setError('You must be signed in to generate content')
+      return
+    }
+
+    if (!session || !notes) {
+      setError('No notes available for this session')
       return
     }
 
@@ -88,8 +137,12 @@ function QuizConfigPage() {
         )
       }
 
-      // Generate quiz
-      const quizResult = await generateQuiz('Custom Quiz', quizConfig)
+      // Generate quiz using notes content as context
+      const quizResult = await generateQuiz(
+        session.topic || 'Study Material',
+        quizConfig,
+        JSON.stringify(notes.content_json)
+      )
 
       // Save to database
       const { error: insertError } = await supabase
@@ -136,6 +189,25 @@ function QuizConfigPage() {
     identification: 'Provide the correct term or answer',
     essay: 'Write detailed responses to questions',
     math_problems: 'Solve mathematical problems and equations',
+  }
+
+  if (!loading && !notes) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-lg">
+          <p className="text-lg font-semibold text-gray-900 mb-4">No notes available for this session</p>
+          <p className="text-sm text-gray-600 mb-6">
+            Please return to the content page and make sure notes were generated for this study session.
+          </p>
+          <button
+            onClick={() => navigate({ to: '/content/$id', params: { id } })}
+            className="px-6 py-3 bg-[#0038A8] text-white rounded-xl hover:bg-blue-700 transition-colors"
+          >
+            Back to Notes
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

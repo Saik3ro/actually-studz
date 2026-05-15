@@ -64,8 +64,8 @@ async function createCompletion(prompt: string) {
       { role: "system", content: "You are an assistant that returns ONLY valid JSON. No markdown, no code blocks, no additional text. Start with { and end with }." },
       { role: "user", content: prompt }
     ],
-    max_tokens: 1200,
-    temperature: 0.2,
+    max_tokens: 4096,
+    temperature: 0.7,
   });
 
   const rawText = completion.choices?.[0]?.message?.content;
@@ -81,32 +81,37 @@ async function createCompletion(prompt: string) {
 export async function generateNotes(topic: string, context?: string) {
   if (!topic || !topic.trim()) throw new Error("Topic is required");
 
-  const prompt = `Create comprehensive, detailed study notes for: ${topic}${context ? "\n\nContext:\n" + context : ""}.
+  const prompt = `You are an expert educator creating detailed study notes.
+
+TOPIC: ${topic}
+${context ? 'CONTEXT: ' + context : ''}
 
 REQUIREMENTS:
-- Generate LONG, comprehensive notes (minimum 1000 words)
-- Structure with numbered sections (1., 2., 3., etc.)
-- Each section should have lettered subsections (a., b., c., etc.)
-- Each term/concept should be: **bold term**: definition
-- Include detailed explanations as full paragraphs
-- Use proper indentation for subsections (2rem margin)
-- NO em dashes anywhere — replace with commas or periods
-- Title should be bold and larger at the top
+- Generate COMPREHENSIVE notes with at least 5-8 detailed sections
+- Each section must have:
+  * A clear heading
+  * 3-5 key terms with full definitions (at least 1-2 sentences each)
+  * A thorough explanation paragraph (at least 4-6 sentences)
+- Total output should be at least 800 words
+- Use proper academic language
+- Be specific and factual, not vague
+- Cover the topic in depth from fundamentals to advanced concepts
 
-FORMAT:
-Title: [Topic Name]
+FORMAT: Return ONLY valid JSON with this structure:
+{
+  "title": "Topic Title",
+  "sections": [
+    {
+      "heading": "Section Heading",
+      "terms": [
+        {"word": "Term", "definition": "Full definition with detail"}
+      ],
+      "explanation": "Thorough explanation paragraph covering this section's concepts in depth."
+    }
+  ]
+}
 
-1. [Main Section Heading]
-   a. **Term**: Definition of the term with detailed explanation.
-      Full paragraph explaining the concept in depth, covering all important aspects, examples, and applications.
-   b. **Another Term**: Another detailed definition.
-      Comprehensive explanation paragraph covering multiple aspects of this concept.
-
-2. [Next Main Section]
-   a. **Term**: Definition...
-      Detailed explanation...
-
-You must respond with ONLY valid JSON. No markdown, no code blocks, no additional text. Start with { and end with }. Return a JSON object with title (string) and sections (array of {heading, terms: [{word, definition}], explanation}).`;
+IMPORTANT: Every field must be filled with substantial content. No empty arrays or short placeholder text.`;
 
   console.log("Generating notes for:", topic);
   const result = await createCompletion(prompt);

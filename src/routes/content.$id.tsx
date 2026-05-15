@@ -131,7 +131,7 @@ function ContentPage() {
 
   const handleGenerateQuizFromNotes = () => {
     if (!session) return
-    navigate({ to: '/quiz-config/$sessionId', params: { sessionId: id } })
+    navigate({ to: '/quiz-config/$id', params: { id } })
   }
 
   const renderNotesTab = () => {
