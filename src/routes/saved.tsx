@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bookmark, BookOpen, HelpCircle, Layers } from "lucide-react";
+import { Bookmark, BookOpen, HelpCircle, Layers, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import supabase from "../lib/supabaseClient";
 
 export const Route = createFileRoute("/saved")({
@@ -25,39 +26,59 @@ function SavedPage() {
   const [savedTopics, setSavedTopics] = useState<SavedTopic[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchSavedTopics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("study_sessions")
+        .select("id, topic, created_at, generated_types")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const topics: SavedTopic[] = (data || [])
+        .filter((session) => session.generated_types?.includes("notes"))
+        .map((session) => ({
+          id: session.id.toString(),
+          title: session.topic || "Untitled Topic",
+          date: new Date(session.created_at).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+          has: session.generated_types || [],
+        }));
+
+      setSavedTopics(topics);
+    } catch (error) {
+      console.error("Error fetching saved topics:", error);
+      toast.error("Failed to load saved topics")
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    const fetchSavedTopics = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("study_sessions")
-          .select("id, topic, created_at, generated_types")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const topics: SavedTopic[] = (data || [])
-          .filter((session) => session.generated_types?.includes("notes"))
-          .map((session) => ({
-            id: session.id.toString(),
-            title: session.topic || "Untitled Topic",
-            date: new Date(session.created_at).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            }),
-            has: session.generated_types || [],
-          }));
-
-        setSavedTopics(topics);
-      } catch (error) {
-        console.error("Error fetching saved topics:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSavedTopics();
+    fetchSavedTopics()
   }, []);
+
+  const handleDeleteTopic = async (topicId: string) => {
+    if (!confirm("Are you sure you want to delete this saved topic?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("study_sessions")
+        .delete()
+        .eq("id", Number(topicId));
+
+      if (error) throw error;
+
+      setSavedTopics((prev) => prev.filter((topic) => topic.id !== topicId));
+      toast.success("Saved topic deleted")
+    } catch (error) {
+      console.error("Error deleting saved topic:", error);
+      toast.error("Failed to delete saved topic")
+    }
+  }
 
   if (loading) {
     return (
@@ -95,29 +116,41 @@ function SavedPage() {
       ) : (
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {savedTopics.map((item) => (
-            <Link
+            <div
               key={item.id}
-              to="/content/$id"
-              params={{ id: item.id }}
-              search={{ mode: "notes" as const }}
-              className="group rounded-2xl border border-border bg-card p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:border-primary transition-all"
+              className="group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:border-primary transition-all"
             >
-              <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                {item.title}
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">{item.date}</p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {item.has.map((h) => (
-                  <span
-                    key={h}
-                    className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground capitalize"
-                  >
-                    {iconFor[h]} {h}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-4 h-1 w-8 rounded-full bg-accent group-hover:w-full transition-all duration-300" />
-            </Link>
+              <button
+                onClick={() => handleDeleteTopic(item.id)}
+                className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white p-2 text-slate-500 hover:border-red-300 hover:text-red-600"
+                aria-label="Delete saved topic"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+
+              <Link
+                to="/content/$id"
+                params={{ id: item.id }}
+                search={{ mode: "notes" as const }}
+                className="block"
+              >
+                <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">{item.date}</p>
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {item.has.map((h) => (
+                    <span
+                      key={h}
+                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground capitalize"
+                    >
+                      {iconFor[h]} {h}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4 h-1 w-8 rounded-full bg-accent group-hover:w-full transition-all duration-300" />
+              </Link>
+            </div>
           ))}
         </div>
       )}

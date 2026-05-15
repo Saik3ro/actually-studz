@@ -156,24 +156,27 @@ function ContentPage() {
   }
 
   const handleCopyAnswerKey = async () => {
-    if (!quizItems.length) return
+    const sourceItems = answeredItems.length ? answeredItems : quizItems
+    if (!sourceItems.length) return
 
     try {
       let answerKeyText = `Answer Key\n\n`
 
-      quizItems.forEach((item, index) => {
+      sourceItems.forEach((item, index) => {
+        const answer = item.answer !== undefined && item.answer !== null ? String(item.answer) : 'N/A'
         answerKeyText += `${index + 1}. ${item.question}\n`
 
-        if (item.format === 'true_false') {
-          answerKeyText += `   Answer: ${item.answer}\n`
-        } else if (item.format === 'multiple_choice') {
-          answerKeyText += `   Answer: ${item.answer}\n`
+        if (item.format === 'multiple_choice' && item.options) {
+          item.options.forEach((option, optionIndex) => {
+            const letter = String.fromCharCode(65 + optionIndex)
+            const isCorrect = option === item.answer
+            answerKeyText += `   ${letter}. ${option}${isCorrect ? ' ✓' : ''}\n`
+          })
+          answerKeyText += `   Answer: ${answer}\n`
+        } else if (item.format === 'true_false') {
+          answerKeyText += `   Answer: ${answer === 'N/A' ? answer : answer.toLowerCase() === 'true' ? 'True' : 'False'}\n`
         } else {
-          // Multiple choice with options
-          const correctIndex = item.options?.findIndex(option => option === item.answer)
-          if (correctIndex !== undefined) {
-            answerKeyText += `   Answer: ${String.fromCharCode(65 + correctIndex)}. ${item.answer}\n`
-          }
+          answerKeyText += `   Answer: ${answer}\n`
         }
 
         if (item.explanation) {

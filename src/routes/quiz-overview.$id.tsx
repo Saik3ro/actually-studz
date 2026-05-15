@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Loader2, Copy, Save, Play, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import supabase from '../lib/supabaseClient'
@@ -8,6 +8,18 @@ import { useAuth } from '../contexts/AuthContext'
 export const Route = createFileRoute('/quiz-overview/$id')({
   component: QuizOverviewPage,
 })
+
+type QuizItem = {
+  format: string
+  key: string
+  sectionIndex: number
+  itemIndex: number
+  question: string
+  answer?: string
+  options?: string[]
+  explanation?: string
+  [key: string]: any
+}
 
 function QuizOverviewPage() {
   const { id } = Route.useParams()
@@ -114,6 +126,7 @@ function QuizOverviewPage() {
       quiz.answered_version_json.sections.forEach((section: any, sectionIndex: number) => {
         quizText += `${section.format.replace('_', ' ').toUpperCase()}\n\n`
         section.items.forEach((item: any, itemIndex: number) => {
+          const answer = item.answer !== undefined && item.answer !== null ? String(item.answer) : 'N/A'
           quizText += `${itemIndex + 1}. ${item.question}\n`
 
           if (section.format === 'multiple_choice' && item.options) {
@@ -122,10 +135,11 @@ function QuizOverviewPage() {
               const isCorrect = option === item.answer
               quizText += `   ${letter}. ${option}${isCorrect ? ' ✓' : ''}\n`
             })
+            quizText += `   Answer: ${answer}\n`
           } else if (section.format === 'true_false') {
-            quizText += `   Answer: ${item.answer ? 'True' : 'False'}\n`
+            quizText += `   Answer: ${answer === 'N/A' ? answer : answer.toLowerCase() === 'true' ? 'True' : 'False'}\n`
           } else {
-            quizText += `   Answer: ${item.answer}\n`
+            quizText += `   Answer: ${answer}\n`
           }
 
           if (item.explanation) {
@@ -143,6 +157,38 @@ function QuizOverviewPage() {
     }
   }
 
+  const buildQuizItems = (version: any, fallbackVersion?: any): QuizItem[] => {
+    if (!version?.sections) return []
+    return version.sections.flatMap((section: any, sectionIndex: number) =>
+      section.items.map((item: any, itemIndex: number) => {
+        const fallbackItem = fallbackVersion?.sections?.[sectionIndex]?.items?.[itemIndex]
+        const options = item.options?.length ? item.options : fallbackItem?.options
+
+        return {
+          ...item,
+          format: section.format,
+          key: `${sectionIndex}-${itemIndex}`,
+          sectionIndex,
+          itemIndex,
+          options: options || undefined,
+        }
+      })
+    )
+  }
+
+  const quizVersion = quiz?.blank_version_json ?? quiz?.answered_version_json
+  const answeredVersion = quiz?.answered_version_json
+
+  const quizItems = useMemo(
+    () => buildQuizItems(quizVersion, answeredVersion),
+    [quizVersion, answeredVersion]
+  )
+
+  const answeredItems = useMemo(
+    () => buildQuizItems(answeredVersion),
+    [answeredVersion]
+  )
+
   const handlePracticeQuiz = () => {
     navigate({ to: '/content/$id', params: { id }, search: { mode: 'quiz' } })
   }
@@ -154,13 +200,18 @@ function QuizOverviewPage() {
     }
 
     try {
+      const quizDataToSave = {
+        items: quizItems,
+        answered_items: answeredItems,
+      }
+
       const { error } = await supabase
         .from('saved_quizzes')
         .insert({
           user_id: user.id,
           session_id: session.id,
           title: session.title || session.topic,
-          formats: session.generated_types || ['quiz']
+          quiz_data: quizDataToSave,
         })
 
       if (error) {
