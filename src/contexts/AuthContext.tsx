@@ -1,4 +1,4 @@
-import supabase from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../lib/supabaseClient";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         {
           id: data.user.id,
           full_name: fullName,
-        },
+        } as any,
         { onConflict: "id" },
       );
       if (profileError) {

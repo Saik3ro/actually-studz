@@ -1,24 +1,21 @@
-import type { ReactNode } from "react";
-import { useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 
-const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+import { useAuth } from '../contexts/AuthContext';
+import { Navigate } from '@tanstack/react-router';
+import { Loader2 } from 'lucide-react'; // Assuming lucide-react is installed
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (loading || user) return;
-    void navigate({ to: "/auth", replace: true });
-  }, [loading, user, navigate]);
-
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="animate-spin" size={48} />
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" />;
   }
 
   return <>{children}</>;
